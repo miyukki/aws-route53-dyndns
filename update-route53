@@ -1,0 +1,31 @@
+#!/bin/sh
+
+RECORD_IP=`curl -s http://ipecho.net/plain`
+TEMPFILE='/tmp/route53-record.json'
+
+cat << EOS > $TEMPFILE
+{
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "$RECORD_HOST",
+        "Type": "A",
+        "TTL": 120,
+        "ResourceRecords": [
+          {
+            "Value": "$RECORD_IP"
+          }
+        ]
+      }
+    }
+  ]
+}
+EOS
+
+echo update a route53 record. zone_id=$ZONE_ID record_host=$RECORD_HOST record_ip=$RECORD_IP
+
+aws route53 change-resource-record-sets --hosted-zone-id $ZONE_ID --change-batch file://$TEMPFILE \
+  | python -c "import sys; print ''.join(map(lambda s:s.lstrip(' ').replace('\n', ''), sys.stdin.readlines()))"
+
+rm -rf $TEMPFILE
